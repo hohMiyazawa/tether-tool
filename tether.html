@@ -95,10 +95,10 @@ a, a:hover, a:visited {
 			System<select name="system"></select><br><!--dynamically added-->
 			<h3>Vertical tether</h3>
 			<form id="input">
-				<input name="foot" value="2000">Tether foot altitude (km)<br>
-				<input name="top" value="9500">Tether top altitude (km)<br>
-				<input name="centre" value="5000">Tether centre altitude (km). The part of the tether in circular orbit<br>
 				<div class="container">
+					<input name="foot" value="2000">Tether foot altitude (km)<br>
+					<input name="top" value="9500">Tether top altitude (km)<br>
+					<input name="centre" value="5000">Tether centre altitude (km). The part of the tether in circular orbit<br>
 					Tether material<select name="material">
 						<option value="zylon">Zylon (5.8 GPa, 1.54 g/cm<sup>3</sup>)</option>
 						<option value="aramid">Aramid (3.62 GPa, 1.44 g/cm<sup>3</sup>)</option>
@@ -114,7 +114,7 @@ a, a:hover, a:visited {
 				</div>
 				<p style="color:red;" id="warnings"></p>
 			</form>
-			<button onclick="calc();hardReload();">Calculate</button><br>
+			<button onclick="calc();hardReload();">Update</button><br>
 			<p>You can also adjust the tether by dragging the red markers below:</p>
 			<div id="output">
 				<div class="container" id="tetherSketch">
@@ -220,7 +220,7 @@ var tether = {//remember to also update the select list in the HTML
 		zylon:   [5800000000,1540],
 		aramid:  [3620000000,1440],
 		steel:   [2617000000,8000],
-		hppe:    [2400000000,970],
+		hppe:	[2400000000,970],
 		mwcnt:   [30000000000,1350],
 		xxmwcnt: [100000000000,1350]
 	}
@@ -524,7 +524,7 @@ tether.dockedEnergy =
 	out("warnings",warnings);
 
 	while(illustration.lastChild){//clean svg
-    	illustration.removeChild(illustration.lastChild);
+		illustration.removeChild(illustration.lastChild);
 	};
 	minimum_x_coordinate = Math.max(-moon.radius/900,(moon.radius - (tether.top + tether.foot)/2)/1000);
 	minimum_y_coordinate = Math.max(-moon.radius/900,-tether.Length/4000);
@@ -764,7 +764,7 @@ tether.dockedEnergy =
 
 		addText(
 			text_marker_container,
-			targets[i].name.capitalize(),
+			targets[i].name.capitalize() + "↑",
 			targets[i].location/1000,
 			svg_scale*3,
 			svg_scale*2.5,
@@ -809,26 +809,26 @@ tether.dockedEnergy =
 
 };
 var hardReload = function(){
-    var animation = document.createElementNS(svgNS,"animate");
-    animation.setAttributeNS(null,"attributeName","opacity");
-    animation.setAttributeNS(null,"begin","indefinite");
-    animation.setAttributeNS(null,"values","0;0;1");
-    animation.setAttributeNS(null,"dur", 1.5);
-    animation.setAttributeNS(null,"fill","freeze");
+	var animation = document.createElementNS(svgNS,"animate");
+	animation.setAttributeNS(null,"attributeName","opacity");
+	animation.setAttributeNS(null,"begin","indefinite");
+	animation.setAttributeNS(null,"values","0;0;1");
+	animation.setAttributeNS(null,"dur", 1.5);
+	animation.setAttributeNS(null,"fill","freeze");
 
-    var marker_animation = document.createElementNS(svgNS,"animate");
-    marker_animation.setAttributeNS(null,"attributeName","opacity");
-    marker_animation.setAttributeNS(null,"begin","indefinite");
-    marker_animation.setAttributeNS(null,"values","0;0;0;0;1");
-    marker_animation.setAttributeNS(null,"dur", 2);
-    marker_animation.setAttributeNS(null,"fill","freeze");
+	var marker_animation = document.createElementNS(svgNS,"animate");
+	marker_animation.setAttributeNS(null,"attributeName","opacity");
+	marker_animation.setAttributeNS(null,"begin","indefinite");
+	marker_animation.setAttributeNS(null,"values","0;0;0;0;1");
+	marker_animation.setAttributeNS(null,"dur", 2);
+	marker_animation.setAttributeNS(null,"fill","freeze");
 
-    var text_marker_animation = document.createElementNS(svgNS,"animate");
-    text_marker_animation.setAttributeNS(null,"attributeName","opacity");
-    text_marker_animation.setAttributeNS(null,"begin","indefinite");
-    text_marker_animation.setAttributeNS(null,"values","0;0;0;0;0;1");
-    text_marker_animation.setAttributeNS(null,"dur", 3);
-    text_marker_animation.setAttributeNS(null,"fill","freeze");
+	var text_marker_animation = document.createElementNS(svgNS,"animate");
+	text_marker_animation.setAttributeNS(null,"attributeName","opacity");
+	text_marker_animation.setAttributeNS(null,"begin","indefinite");
+	text_marker_animation.setAttributeNS(null,"values","0;0;0;0;0;1");
+	text_marker_animation.setAttributeNS(null,"dur", 3);
+	text_marker_animation.setAttributeNS(null,"fill","freeze");
 
 	var svg_rotate = document.createElementNS(svgNS,"animate");
 	svg_rotate.setAttributeNS(null,"attributeName","viewBox");
@@ -843,7 +843,6 @@ var hardReload = function(){
 	illustration.appendChild(svg_rotate);
 
 	svg_rotate.beginElement();
-	animation.beginElement();
 	marker_animation.beginElement();
 	text_marker_animation.beginElement();
 };
