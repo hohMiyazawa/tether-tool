@@ -4,8 +4,10 @@ Simulate vertical orbiting tethers.
 
 ## Try it online
 
-TODO
+Moonwards:
 
-## Embedding guide
+(insert URL when ready)
 
-TODO
+Or on Github:
+
+https://hohmiyazawa.github.io/tether-tool/tetherEmbed.html

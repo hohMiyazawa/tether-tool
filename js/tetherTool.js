@@ -1,169 +1,138 @@
-<!DOCTYPE html>
-<html lang="en-US">
-	<head>
-		<title>Tethers</title>
-				<meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
-		<meta charset="utf-8">
-		<meta name="theme-color" content="#ffffff">
-		<meta name="description" content="">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
+function tetherTool(DOMnode){
 
-		<script src="js/orbit.js"></script>
-		<style>
-body{
-	background-color:#202030;
+//part 1: utility functions
+
+function create(
+	HTMLtag,//<string>: The kind of DOM element to create
+	classes,//(optional) <string>: The css class to give the element  OR   [<strings>]: A list of multiple class names
+	//(the first string of the list could optionally start with a "#", in which case it will be an id instead)
+	text,//(optional) <string>: The innerText to give the element
+	appendLocation,//(optional) DOMnode: a node to immediately append the created element to
+	cssText//(optional) <string>: Inline CSS to appy to the element
+){
+	let element = document.createElement(HTMLtag);
+	if(Array.isArray(classes)){
+		element.classList.add(...classes);
+		if(classes.includes("newTab")){
+			element.setAttribute("target","_blank")
+		}
+	}
+	else if(classes){
+		if(classes[0] === "#"){
+			element.id = classes.substring(1)
+		}
+		else{
+			element.classList.add(classes);
+			if(classes === "newTab"){
+				element.setAttribute("target","_blank")
+			}
+		}
+	};
+	if(text || text === 0){
+		element.innerText = text
+	};
+	if(appendLocation && appendLocation.appendChild){
+		appendLocation.appendChild(element)
+	};
+	if(cssText){
+		element.style.cssText = cssText
+	};
+	return element
+};
+
+//part 2: css
+
+let tetherToolStyle = create("style");
+tetherToolStyle.id = "tetherToolCSS";
+tetherToolStyle.type = "text/css";
+document.head.appendChild(tetherToolStyle);
+tetherToolStyle.textContent = `
+.tetherToolMain .container{
+	display: inline-block;
+	-webkit-border-radius: 10px;
+	-moz-border-radius: 10px;
+	border-radius: 10px;
+	border-style: solid;
+	border-width: 1px;
+	border-color: black;
+	padding: 10px;
+	margin: 5px;
 }
-.wrapper{
-	margin-left:5%;
-	margin-right:5%;
-	padding:20px;
+.tetherToolMain{
+	background-color: #F6F6F0;
+	-webkit-border-radius: 10px;
+	-moz-border-radius: 10px;
+	border-radius: 10px;
+	box-shadow: 5px 5px 4px #000000;
 }
-.container{
-	display:inline-block;
-	-webkit-border-radius:10px;
-	-moz-border-radius:10px;
-	border-radius:10px;
-	border-style:solid;
-	border-width:1px;
-	border-color:black;
-	padding:10px;
-	margin:5px;
+.tetherToolMain .canvas{
+	border-style: solid;
+	border-width: 1px;
+	border-color: black;
+	-moz-border-radius: 4px;
+	-webkit-border-radius: 4px;
+	border-radius: 4px;
 }
-#main{
-	background-color:#F6F6F0;
-	-webkit-border-radius:10px;
-	-moz-border-radius:10px;
-	border-radius:10px;
-	box-shadow:5px 5px 4px #000000;
+.tetherToolMain .draggable{
+	cursor: move;
 }
-canvas{
-	border-style:solid;
-	border-width:1px;
-	border-color:black;
-	-moz-border-radius:4px;
-	-webkit-border-radius:4px;
-	border-radius:4px;
+.tetherToolMain .tooltip{
+	cursor: help;
 }
-a, a:hover, a:visited {
-	color:inherit;
-}
-.draggable{
-	cursor:move;
-}
-.tooltip{
-	cursor:help;
-}
-.svgText {
+.tetherToolMain .svgText {
 	pointer-events: none;
 	-webkit-touch-callout: none;
-	-webkit-user-select:none;
-	-khtml-user-select:none;
-	-moz-user-select:none;
-	-ms-user-select:none;
-	-o-user-select:none;
-	user-select:none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	-o-user-select: none;
+	user-select: none;
 }
-#materialOverride{
+.tetherToolMain #materialOverride{
 	display: none;
 }
-#overrideMaterial:checked ~ #materialOverride{
+.tetherToolMain #overrideMaterial:checked ~ #materialOverride{
 	display: block;
 }
-	</style>
+`
 
-</head>
-<body>
+//part 3: HTML
 
-		<div class="wrapper" id="main">
-			<h1>Tethers</h1>
-			System<select name="system"></select><br><!--dynamically added-->
-			<h3>Vertical tether</h3>
-			<form id="input">
-				<div class="container">
-					<input name="foot" value="2000">Tether foot altitude (km)<br>
-					<input name="top" value="9500">Tether top altitude (km)<br>
-					<input name="centre" value="5000">Tether centre altitude (km). The part of the tether in circular orbit<br>
-					Tether material<select name="material">
-						<option value="zylon">Zylon (5.8 GPa, 1.54 g/cm<sup>3</sup>)</option>
-						<option value="aramid">Aramid (3.62 GPa, 1.44 g/cm<sup>3</sup>)</option>
-						<option value="hppe">HPPE (2.4 GPa, 0.97 g/cm<sup>3</sup>)</option>
-						<option value="steel">Steel (2.62 GPa, 8 g/cm<sup>3</sup>)</option>
-						<option value="mwcnt">Future Carbon Nanotube (30 GPa, 1.35 g/cm<sup>3</sup>)</option>
-						<option value="xxmwcnt">Super-Future Nanotube (100 GPa, 1.35 g/cm<sup>3</sup>)</option>
-					</select><br>
-					<input name="overrideMaterial" id="overrideMaterial" type="checkbox">Use custom material instead<br>
-					<div id="materialOverride">
-						<input name="tensileStrength">Tensile strength (Pa)<br>
-						<input name="density">Density kg/m³<br>
-						<input name="safety" value="1">Safety factor<br>
-					</div>
-				</div>
-				<p style="color:red;" id="warnings"></p>
-			</form>
-			<button onclick="calc();hardReload();">Update</button><br>
-			<p>You can also adjust the tether by dragging the red markers below:</p>
-			<div id="output">
-				<div class="container" id="tetherSketch">
-					<svg width="900" height="250" id="svg_ilu"></svg>
-				</div><br>
-				<div class="container">
-					<h4>General information</h4>
-					<p id="period"></p>
-					<p id="footVel"></p>
-					<p id="hitTheGround"></p>
-					<p id="centreVel"></p>
-					<p id="topVel"></p>
-				</div><br>
-				<div class="container">
-					<h4>If released from top:</h4>
-					<p id="escape"></p>
-					<p id="newApoapsis"></p>
-					<h4>Minimum release altitude:</h4>
-					<p id="releases"></p>
-				</div><br>
-				<div class="container">
-					<h4>Climber:</h4>
-					<p id="lowClimber"></p>
-					<p id="highClimber"></p>
-				</div><br>
-				<div class="container">
-					<h4>Tether properties</h4>
-					<p id="lowAcceleration"></p>
-					<p id="lowRatio"></p>
-					<p id="lowMass"></p>
-					<p id="highAcceleration"></p>
-					<p id="highRatio"></p>
-					<p id="highMass"></p>
-				</div>
-			</div>
-<script>
-(function(){
-	var availableSystems = Array.from(systems.entries()).map(a => a[1]).filter(system => 
-		system.properties.type !== "mathematical object"
-		&& system.radius
-		&& system.GM
-	);
-	availableSystems.sort();
-	//maka a <select> list out of all the systems
-	var systemSelector = document.getElementsByName("system")[0];
-	for(var i=0;i<availableSystems.length;i++){
-		var opt = document.createElement('option');
-		opt.value = availableSystems[i];
-		opt.innerText = availableSystems[i].properties.name;
-		systemSelector.appendChild(opt);
-		if(availableSystems[i].properties.name == "Moon"){//moon should be default
-			systemSelector.selectedIndex = i;
-		};
-	};
-})();
-var svgNS = "http://www.w3.org/2000/svg";
+let mainContainer = create("div","tetherToolMain",false,DOMnode);
+create("h1",false,"Tethers",mainContainer);
+create("span",false,"System",mainContainer);
+let selector = create("select",false,false,mainContainer);
+	selector.name = "system";
+create("h3",false,"Vertical tether",mainContainer);
+let formElement = create("form","#input",false,mainContainer);
+	let formContainer = create("div","container",false,formElement);
+		
+	let warnings = create("p","#warnings",false,formElement,"color: red");
+
+
+//part 4: planetary data
+
+Array.from(systems.entries()).map(a => a[1]).filter(system => 
+	system.properties.type !== "mathematical object"
+	&& system.radius
+	&& system.GM
+).sort().forEach((system,index) => {
+	var opt = create("option",false,system,selector);
+	if(system.properties.name === "Moon"){//The Moon should be default
+		selector.selectedIndex = index
+	}
+})
+
+//part 5: tether tool
+
+const svgNS = "http://www.w3.org/2000/svg";
 var illustration = document.getElementById("svg_ilu");
-var form = document.getElementById("input").elements;
-var selector = document.getElementsByName("system")[0];
+var form = formElement.elements;
 var moon = systems.get(selector.options[selector.selectedIndex].value);//parent object of the tether
 
 var tether = {//remember to also update the select list in the HTML
-	materials:{
+	materials: {
 		zylon:   [5800000000,1540],
 		aramid:  [3620000000,1440],
 		steel:   [2617000000,8000],
@@ -816,8 +785,4 @@ function deselectElement(evt){
 };
 calc();hardReload();
 selector.oninput = function(){calc();hardReload();}
-</script>
-
-		</div>
-	</body>
-</html>
+}
