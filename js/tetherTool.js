@@ -79,6 +79,9 @@ tetherToolStyle.textContent = `
 .tetherToolMain .tooltip{
 	cursor: help;
 }
+.tetherToolMain .label{
+	margin-left: 5px;
+}
 .tetherToolMain .svgText {
 	pointer-events: none;
 	-webkit-touch-callout: none;
@@ -107,8 +110,81 @@ let selector = create("select",false,false,mainContainer);
 create("h3",false,"Vertical tether",mainContainer);
 let formElement = create("form","#input",false,mainContainer);
 	let formContainer = create("div","container",false,formElement);
+
+		let footInput = create("input",false,false,formContainer);
+			footInput.name = "foot";
+			footInput.value = 2000;
+		create("span","label","Tether foot altitude (km)",formContainer);
+		create("br",false,false,formContainer);
+		let topInput = create("input",false,false,formContainer);
+			topInput.name = "top";
+			topInput.value = 9500;
+		create("span","label","Tether top altitude (km)",formContainer);
+		create("br",false,false,formContainer);
+		let centreInput = create("input",false,false,formContainer);
+			centreInput.name = "centre";
+			centreInput.value = 5000;
+		create("span","label","Tether centre altitude (km). The part of the tether in circular orbit",formContainer);
+		create("br",false,false,formContainer);
+		create("br",false,false,formContainer);
+
+let tether = {
+	materials: [
+		{
+			name: "zylon",
+			displayName: "Zylon (5.8 GPa, 1.54 g/cm³)",
+			strength: 5800000000,
+			density: 1540
+		},
+		{
+			name: "aramid",
+			displayName: "Aramid (3.62 GPa, 1.44 g/cm³)",
+			strength: 3620000000,
+			density: 1440
+		},
+		{
+			name: "steel",
+			displayName: "Steel (2.62 GPa, 8 g/cm³)",
+			strength: 2617000000,
+			density: 8000
+		},
+		{
+			name: "hppe",
+			displayName: "HPPE (2.4 GPa, 0.97 g/cm³)",
+			strength: 2400000000,
+			density: 970
+		},
+		{
+			name: "mwcnt",
+			displayName: "Future Carbon Nanotube (30 GPa, 1.35 g/cm³)",
+			strength: 30000000000,
+			density: 1350
+		},
+		{
+			name: "xxmwcnt",
+			displayName: "Super-Future Nanotube (100 GPa, 1.35 g/cm³)",
+			strength: 100000000000,
+			density: 1350
+		}
+	]
+};
+
+		create("span",false,"Tether material",formContainer);
+		let materialSelector = create("select",false,false,formContainer);
+			materialSelector.name = "material";
+		tether.materials.forEach(material => {
+			create("option",false,material.displayName,materialSelector).value = material.name
+		})
 		
 	let warnings = create("p","#warnings",false,formElement,"color: red");
+
+let updateButton = create("button",false,"Update",mainContainer,"display: block");
+	updateButton.onclick = function(){
+		calc();
+		hardReload()
+	};
+create("p",false,"You can also adjust the tether by dragging the red markers below:",mainContainer);
+let output = create("div","#output",false,mainContainer);
 
 
 //part 4: planetary data
@@ -131,16 +207,6 @@ var illustration = document.getElementById("svg_ilu");
 var form = formElement.elements;
 var moon = systems.get(selector.options[selector.selectedIndex].value);//parent object of the tether
 
-var tether = {//remember to also update the select list in the HTML
-	materials: {
-		zylon:   [5800000000,1540],
-		aramid:  [3620000000,1440],
-		steel:   [2617000000,8000],
-		hppe:	[2400000000,970],
-		mwcnt:   [30000000000,1350],
-		xxmwcnt: [100000000000,1350]
-	}
-};
 function calc(){
 	moon = systems.get(selector.options[selector.selectedIndex].value);//parent object of the tether
 	var warnings = "";//message the user about malformed input
@@ -283,7 +349,7 @@ function calc(){
 	tether.lowMass = tether.lowAcceleration*(tether.centre-tether.foot)*(lowIteratorSum/iteratorLimit)/tether.strength;
 	tether.highMass = tether.highAcceleration*(tether.top-tether.centre)*(highIteratorSum/iteratorLimit)/tether.strength;
 
-//parsing of planets.json to find bodies reachable after release from the tether
+//find bodies reachable after release from the tether
 	var potentialTargets = {siblings: [], aunts: []};
 	if(moon.orbit){
 		potentialTargets.parent = moon.orbit.system;
