@@ -63,7 +63,7 @@ tetherToolStyle.textContent = `
 	-webkit-border-radius: 10px;
 	-moz-border-radius: 10px;
 	border-radius: 10px;
-	box-shadow: 5px 5px 4px #000000;
+	padding: 20px;
 }
 .tetherToolMain .canvas{
 	border-style: solid;
@@ -129,52 +129,60 @@ let formElement = create("form","#input",false,mainContainer);
 		create("br",false,false,formContainer);
 
 let tether = {
-	materials: [
-		{
-			name: "zylon",
+	materials: {
+		"zylon": {
 			displayName: "Zylon (5.8 GPa, 1.54 g/cm³)",
 			strength: 5800000000,
 			density: 1540
 		},
-		{
-			name: "aramid",
+		"aramid": {
 			displayName: "Aramid (3.62 GPa, 1.44 g/cm³)",
 			strength: 3620000000,
 			density: 1440
 		},
-		{
-			name: "steel",
+		"steel": {
 			displayName: "Steel (2.62 GPa, 8 g/cm³)",
 			strength: 2617000000,
 			density: 8000
 		},
-		{
-			name: "hppe",
+		"hppe": {
 			displayName: "HPPE (2.4 GPa, 0.97 g/cm³)",
 			strength: 2400000000,
 			density: 970
 		},
-		{
-			name: "mwcnt",
+		"mwcnt": {
 			displayName: "Future Carbon Nanotube (30 GPa, 1.35 g/cm³)",
 			strength: 30000000000,
 			density: 1350
 		},
-		{
-			name: "xxmwcnt",
+		"xxmwcnt": {
 			displayName: "Super-Future Nanotube (100 GPa, 1.35 g/cm³)",
 			strength: 100000000000,
 			density: 1350
 		}
-	]
+	}
 };
-
 		create("span",false,"Tether material",formContainer);
-		let materialSelector = create("select",false,false,formContainer);
+		let materialSelector = create("select",false,false,formContainer,"display: block");
 			materialSelector.name = "material";
-		tether.materials.forEach(material => {
-			create("option",false,material.displayName,materialSelector).value = material.name
+		Object.keys(tether.materials).forEach(material => {
+			create("option",false,tether.materials[material].displayName,materialSelector).value = material
 		})
+		let overrideInput = create("input",false,false,formContainer);
+			overrideInput.name = "overrideMaterial";
+			overrideInput.type = "checkbox";
+		create("span","label","Use custom material instead",formContainer);
+		let materialOverride = create("div","#materialOverride",false,formContainer);
+			let strengthInput = create("input",false,false,materialOverride);
+				strengthInput.name = "tensileStrength";
+			create("span","label","Tensile strength (Pa)",materialOverride);
+			let densityInput = create("input",false,false,materialOverride);
+				densityInput.name = "density";
+			create("span","label","Density kg/m³",materialOverride);
+			let safetyInput = create("input",false,false,materialOverride);
+				safetyInput.name = "safety";
+				safetyInput.value = 1;
+			create("span","label","Safety factor",materialOverride);
 		
 	let warnings = create("p","#warnings",false,formElement,"color: red");
 
@@ -185,6 +193,12 @@ let updateButton = create("button",false,"Update",mainContainer,"display: block"
 	};
 create("p",false,"You can also adjust the tether by dragging the red markers below:",mainContainer);
 let output = create("div","#output",false,mainContainer);
+	let releaseContainer = create("div","container",false,output);
+		create("h4",false,"If released from top:",releaseContainer);
+		let releaseEscape = create("p",false,false,releaseContainer);
+		let releaseApoapsis = create("p",false,false,releaseContainer);
+		create("h4",false,"Minimum release altitude:",releaseContainer);
+		let releases = create("p",false,false,releaseContainer);
 
 
 //part 4: planetary data
@@ -274,7 +288,7 @@ function calc(){
 		tether.strength = (gnum("tensileStrength")/gnum("safety"))/gnum("density");
 	}
 	else{
-		tether.strength = (tether.materials[form["material"].value][0]/gnum("safety")) / tether.materials[form["material"].value][1];
+		tether.strength = (tether.materials[form["material"].value].strength/gnum("safety")) / tether.materials[form["material"].value].density;
 	};
 
 	tether.lowAcceleration = moon.GM/Math.pow(moon.radius + tether.foot,2) - tether.footVel*tether.footVel/(moon.radius + tether.foot);
@@ -416,9 +430,7 @@ function calc(){
 		};
 		return val;
 	};
-	while(document.getElementById("releases").hasChildNodes()){
-		document.getElementById("releases").removeChild(document.getElementById("releases").lastChild);
-	};
+	releases.innerText = "";
 	for(var i=0;i<targets.length;i++){
 		if(Number.isNaN(targets[i].vinf)){
 			continue;
@@ -427,7 +439,7 @@ function calc(){
 		var item = document.createElement("p");
 		item.innerText = targets[i].name;
 		item.innerText += " " + myRound((targets[i].location - moon.radius)/1000,2) + "km";
-		document.getElementById("releases").appendChild(item);
+		releases.appendChild(item);
 	};
 
 /*Some math:
