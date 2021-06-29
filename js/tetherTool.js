@@ -102,6 +102,7 @@ tetherToolStyle.textContent = `
 
 //part 3: HTML
 
+const svgNS = "http://www.w3.org/2000/svg";
 let mainContainer = create("div","tetherToolMain",false,DOMnode);
 create("h1",false,"Tethers",mainContainer);
 create("span",false,"System",mainContainer);
@@ -193,12 +194,42 @@ let updateButton = create("button",false,"Update",mainContainer,"display: block"
 	};
 create("p",false,"You can also adjust the tether by dragging the red markers below:",mainContainer);
 let output = create("div","#output",false,mainContainer);
+	let tetherSketchContainer = create("div","container",false,output);
+		var illustration = document.createElementNS(svgNS,"svg");
+		tetherSketchContainer.appendChild(illustration);
+		illustration.id = "svg_ilu";
+		illustration.width = 900;
+		illustration.height = 250;
+
+	create("br",false,false,output);
+	let generalContainer = create("div","container",false,output);
+		create("h4",false,"General information",generalContainer);
+		create("p","#period",false,generalContainer);
+		create("p","#footVel",false,generalContainer);
+		create("p","#hitTheGround",false,generalContainer);
+		create("p","#centreVel",false,generalContainer);
+		create("p","#topVel",false,generalContainer);
+	create("br",false,false,output);
 	let releaseContainer = create("div","container",false,output);
 		create("h4",false,"If released from top:",releaseContainer);
-		let releaseEscape = create("p",false,false,releaseContainer);
-		let releaseApoapsis = create("p",false,false,releaseContainer);
+		create("p","#escape",false,releaseContainer);
+		create("p","#newApoapsis",false,releaseContainer);
 		create("h4",false,"Minimum release altitude:",releaseContainer);
 		let releases = create("p",false,false,releaseContainer);
+	create("br",false,false,output);
+	let climberContainer = create("div","container",false,output);
+		create("h4",false,"Climber",climberContainer);
+		create("p","#lowClimber",false,climberContainer);
+		create("p","#highClimber",false,climberContainer);
+	create("br",false,false,output);
+	let propertyContainer = create("div","container",false,output);
+		create("h4",false,"Tether properties",propertyContainer);
+		create("p","#lowAcceleration",false,propertyContainer);
+		create("p","#lowRatio",false,propertyContainer);
+		create("p","#lowMass",false,propertyContainer);
+		create("p","#highAcceleration",false,propertyContainer);
+		create("p","#highRatio",false,propertyContainer);
+		create("p","#highMass",false,propertyContainer);
 
 
 //part 4: planetary data
@@ -216,12 +247,10 @@ Array.from(systems.entries()).map(a => a[1]).filter(system =>
 
 //part 5: tether tool
 
-const svgNS = "http://www.w3.org/2000/svg";
-var illustration = document.getElementById("svg_ilu");
 var form = formElement.elements;
 var moon = systems.get(selector.options[selector.selectedIndex].value);//parent object of the tether
 
-function calc(){
+let calc = function(){
 	moon = systems.get(selector.options[selector.selectedIndex].value);//parent object of the tether
 	var warnings = "";//message the user about malformed input
 	var gnum = function(field){//form parser
@@ -589,13 +618,52 @@ tether.dockedEnergy =
 		"black"
 	);
 
+	var selectedElement = 0;
+	let moveElement = function(evt){
+		var pt = illustration.createSVGPoint(), svgP, circle;
+		pt.x = evt.clientX;
+		pt.y = evt.clientY;
+		svgP = pt.matrixTransform(illustration.getScreenCTM().inverse());
+		if(selectedElement.id == "anchor"){
+			if(svgP.x > (tether.foot + moon.radius)/1000 && svgP.x < (tether.top + moon.radius)/1000){
+				selectedElement.setAttributeNS(null,"cx",svgP.x);
+				form["centre"].value = svgP.x - moon.radius/1000;
+			};
+		}
+		else if(selectedElement.id == "foot"){
+			if(svgP.x < (tether.centre + moon.radius)/1000 && svgP.x > moon.radius/1000){
+				selectedElement.setAttributeNS(null,"cx",svgP.x);
+				form["foot"].value = svgP.x - moon.radius/1000;
+			};
+		}
+		else if(selectedElement.id == "top"){
+			if(svgP.x > (tether.centre + moon.radius)/1000){
+				selectedElement.setAttributeNS(null,"cx",svgP.x);
+				form["top"].value = svgP.x - moon.radius/1000;
+			};
+		}
+	};
+	let selectElement = function(evt){
+		selectedElement = evt.target;
+		illustration.onmousemove = moveElement;
+		illustration.onmouseup = deselectElement
+	}
+	let deselectElement = function(evt){
+		if(selectedElement != 0){
+			illustration.removeAttributeNS(null, "onmousemove");
+			illustration.removeAttributeNS(null, "onmouseup");
+			selectedElement = 0;
+		};
+		calc();
+	};
+
 	var foot_marker = document.createElementNS(svgNS,"circle");
 	foot_marker.setAttributeNS(null,"cx",(tether.foot + moon.radius)/1000);
 	foot_marker.setAttributeNS(null,"cy",0);
 	foot_marker.setAttributeNS(null,"fill","red");
 	foot_marker.setAttributeNS(null,"class","draggable");
 	foot_marker.setAttributeNS(null,"id","foot");
-	foot_marker.setAttributeNS(null,"onmousedown","selectElement(evt)");
+	foot_marker.onmousedown = selectElement;
 	foot_marker.setAttributeNS(null,"r",svg_scale*1.4);
 
 	var anchor_marker = document.createElementNS(svgNS,"circle");
@@ -604,7 +672,7 @@ tether.dockedEnergy =
 	anchor_marker.setAttributeNS(null,"fill","#900000");
 	anchor_marker.setAttributeNS(null,"class","draggable");
 	anchor_marker.setAttributeNS(null,"id","anchor");
-	anchor_marker.setAttributeNS(null,"onmousedown","selectElement(evt)");
+	anchor_marker.onmousedown = selectElement;
 	anchor_marker.setAttributeNS(null,"r",svg_scale*1.4);
 
 	var top_marker = document.createElementNS(svgNS,"circle");
@@ -613,7 +681,7 @@ tether.dockedEnergy =
 	top_marker.setAttributeNS(null,"fill","red");
 	top_marker.setAttributeNS(null,"class","draggable");
 	top_marker.setAttributeNS(null,"id","top");
-	top_marker.setAttributeNS(null,"onmousedown","selectElement(evt)");
+	top_marker.onmousedown = selectElement;
 	top_marker.setAttributeNS(null,"r",svg_scale*1.4);
 
 	var descent_trajectory = document.createElementNS(svgNS,"path");
@@ -818,48 +886,6 @@ var hardReload = function(){
 	svg_rotate.beginElement();
 	marker_animation.beginElement();
 	text_marker_animation.beginElement();
-};
-var selectedElement = 0;
-function selectElement(evt){
-	selectedElement = evt.target;
-	illustration.setAttributeNS(null, "onmousemove", "moveElement(evt)");
-	illustration.setAttributeNS(null, "onmouseup", "deselectElement(evt)");
-};
-function moveElement(evt){
-	var pt = illustration.createSVGPoint(), svgP, circle;
-	pt.x = evt.clientX;
-	pt.y = evt.clientY;
-	svgP = pt.matrixTransform(illustration.getScreenCTM().inverse());
-	if(selectedElement.id == "anchor"){
-		if(svgP.x > (tether.foot + moon.radius)/1000 && svgP.x < (tether.top + moon.radius)/1000){
-			selectedElement.setAttributeNS(null,"cx",svgP.x);
-			form["centre"].value = svgP.x - moon.radius/1000;
-		};
-	}
-	else if(selectedElement.id == "foot"){
-		if(svgP.x < (tether.centre + moon.radius)/1000 && svgP.x > moon.radius/1000){
-			selectedElement.setAttributeNS(null,"cx",svgP.x);
-			form["foot"].value = svgP.x - moon.radius/1000;
-		};
-	}
-	else if(selectedElement.id == "top"){
-		if(svgP.x > (tether.centre + moon.radius)/1000){
-			selectedElement.setAttributeNS(null,"cx",svgP.x);
-			form["top"].value = svgP.x - moon.radius/1000;
-		};
-	}
-	else{//default behaviour of move
-		selectedElement.setAttributeNS(null,"cx",svgP.x);
-		selectedElement.setAttributeNS(null,"cy",svgP.y);
-	};
-};
-function deselectElement(evt){
-	if(selectedElement != 0){
-		illustration.removeAttributeNS(null, "onmousemove");
-		illustration.removeAttributeNS(null, "onmouseup");
-		selectedElement = 0;
-	};
-	calc();
 };
 calc();hardReload();
 selector.oninput = function(){calc();hardReload();}
