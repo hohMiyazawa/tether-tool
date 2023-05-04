@@ -47,7 +47,74 @@ const constants = {
 	boltzmann: 1.380649e-23,
 	stefanBoltzmann: 5.670374419e-8,
 	AU: 149597870700,
-	c: 299792458
+	c: 299792458,
+	parsec: 648000*149597870700/Math.PI,
+	lightyear: 299792458 * 86400,
+}
+
+function tisserand(orb1,orb2){
+	return orb2.a/orb1.a + 2 * Math.cos(orb1.relativeInclination(orb2)) * Math.sqrt(orb1.a/orb2.a * (1 - Math.pow(orb1.e,2)))
+}
+
+let brok = function(num){
+	if(num <= 0){
+		if(num === 0){
+			return [[0, 1, 0]]
+		}
+		return brok(-num).map(a => [-a[0],a[1],a[2]])
+	}
+	if(num >= 1){
+		if(num === 1){
+			return [[1, 1, 0]]
+		}
+		return brok(num % 1).map(a => [a[0] + a[1] * Math.trunc(num),a[1],a[2]])
+	}
+	let fracs = [];
+	let lim1_a = 0;
+	let lim1_b = 1;
+	let lim2_a = 1;
+	let lim2_b = 1;
+	for(let i=0;i<1000;i++){
+		if(lim1_a/lim1_b === num){
+			fracs.push([lim1_a, lim1_b, 0]);
+			return fracs
+		}
+		if(lim2_a/lim2_b === num){
+			fracs.push([lim2_a, lim2_b, 0]);
+			return fracs
+		}
+		let lowerDiff = num - lim1_a/lim1_b;
+		let upperDiff = lim2_a/lim2_b - num;
+		if(lowerDiff < upperDiff){
+			if(
+				!fracs.length
+				|| fracs[fracs.length-1][0] !== lim1_a
+				|| fracs[fracs.length-1][1] !== lim1_b
+			){
+				fracs.push([lim1_a, lim1_b, -lowerDiff])
+			}
+		}
+		else{
+			if(
+				!fracs.length
+				|| fracs[fracs.length-1][0] !== lim2_a
+				|| fracs[fracs.length-1][1] !== lim2_b
+			){
+				fracs.push([lim2_a, lim2_b, upperDiff])
+			}
+		}
+		let lim3_a = lim1_a + lim2_a;
+		let lim3_b = lim1_b + lim2_b;
+		if(lim3_a/lim3_b > num){
+			lim2_a = lim3_a;
+			lim2_b = lim3_b;
+		}
+		else{
+			lim1_a = lim3_a;
+			lim1_b = lim3_b;
+		}
+	}
+	return fracs
 }
 
 const defaults = {
@@ -98,6 +165,12 @@ class Vector{
 	}
 	static dotProduct(vec1,vec2){
 		return vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z
+	}
+	dotProduct(vec){
+		return Vector.dotProduct(this,vec)
+	}
+	static cos_theta(vec1,vec2){
+		return vec1.dotProduct(vec2) / (vec1.length * vec2.length)
 	}
 }
 
@@ -191,7 +264,7 @@ class System{
 		return this.properties.density
 			|| this.mass / this.volume
 	}
-	get surfaceGravity(){
+	get gravity(){
 		return this.properties.gravity
 			|| this.GM / Math.pow(this.radius,2)
 	}
@@ -549,30 +622,18 @@ class Orbit{
 	}
 	inner(r){
 		let a = this.a;let P = this.P;let A = this.A;
-		let grunn = a - (A + P)*(r - P)/(A - P)
-		let area = 2*Math.PI*a*a;
-		let sector = area * Math.acos(grunn/a)/(2*Math.PI);
-		let height = Math.sqrt(a*a- grunn*grunn);
+		//let grunn = a - (A + P)*(r - P)/(A - P);
+		let grunn = (A + P)*(r - P)/(A - P);
+		//grunn / (A + P) = (r - P)(A - P)
+		let area = Math.PI*a*a;
+		let sector = area * Math.acos((a - grunn)/a)/(2*Math.PI);
+		let height = Math.sqrt(a*a - Math.pow(grunn - a,2));
 		let triangle = height*(a - P)/2;
 		return {
-			angle: Math.acos((grunn - a + P)/r),
-			time: this.period*(sector - triangle)/area,
+			angle: Math.PI - Math.acos((grunn - P)/r),
+			time: new Time(this.period*(sector - triangle)/area),
 			velocity: this.velocity(r)
 		};
-	}
-	outer(radius){
-		let semi = this.a;let periapsis = this.P;let apoapsis = this.A;
-		let grunn = (apoapsis + periapsis)*(radius - periapsis)/(apoapsis - periapsis) - periapsis;
-		let grunnSkarp = grunn + periapsis - semi;
-		let area = 2*Math.PI*semi*semi;
-		let sector = area * Math.acos(grunnSkarp/semi)/(2*Math.PI);
-		let height = Math.sqrt(semi*semi - grunnSkarp*grunnSkarp);
-		let triangle = height*(semi - periapsis)/2;
-		return {
-			angle: Math.acos(grunn/radius),
-			time: this.period*(triangle + sector)/area,
-			velocity: this.velocity(radius)
-		}
 	}
 	static vectorsToOrbit(system,position,velocity){
 		if(typeof system === "string"){
@@ -595,6 +656,24 @@ class Orbit{
 		let radius = Math.hypot(position.x,position.y,position.z);
 		let velMagnitude = Math.hypot(velocity.x,velocity.y,velocity.z);
 		let energy = Math.pow(velMagnitude,2)/2 - system.GM/radius;
+		let a = - 1 /(velMagnitude * velMagnitude / system.GM - 2/radius);
+		let velTan = velMagnitude * Math.sqrt(1 - Math.pow(Vector.cos_theta(new Vector(position.x,position.y,position.z), new Vector(velocity.x,velocity.y,velocity.z)),2));
+/*
+v^2 = mu * (2/r - 1/a)
+v^2 / mu= 2/r - 1/a
+v^2 / mu - 2/r = - 1/a
+-(v^2 / mu - 2/r) = 1/a
+a = -1 / (v^2 / mu - 2/r) 
+
+
+vp^2 = mu * (2/P - 1/a)
+(v*r/P)^2 = mu * (2/P - 1/a)
+
+*/
+
+		let P = (a*system.GM - Math.sqrt(a*a * system.GM*system.GM - a * system.GM * radius * radius * velTan * velTan))/system.GM;
+		let orbit = new Orbit({system: system, periapsis: P, apoapsis: 2*a - P});
+		return orbit;
 	}
 	get planeVector(){
 		const mag = Math.sin(this.inclination);
@@ -945,16 +1024,24 @@ class Orbit{
 		return Orbit.nodeToNode(orbit)
 	}
 	static transfer(orbit1,orbit2){
-		if(orbit1.system.name !== orbit2.system.name){
-			console.warn("patched conics transfer not implemented");
-			return null;
+		if(orbit1.system.properties.name !== orbit2.system.properties.name){
+			if(orbit1.system.orbit.system.properties.name == orbit2.system.orbit.system.properties.name){
+				let interplanetary = orbit1.system.orbit.planeSplit(orbit2.system.orbit);
+				console.log(interplanetary);
+			}
+			else{
+				console.warn("patched conics transfer not implemented");
+				return null;
+			}
 		}
-		let best = Orbit.biElliptic(orbit1,orbit2);
-		let splitPlaneCost = orbit1.planeSplit(orbit2);
-		if(splitPlaneCost < best){
-			best = splitPlaneCost
+		else{
+			let best = Orbit.biElliptic(orbit1,orbit2);
+			let splitPlaneCost = orbit1.planeSplit(orbit2);
+			if(splitPlaneCost < best){
+				best = splitPlaneCost
+			}
+			return best
 		}
-		return best
 	}
 	transfer(orbit){
 		return Orbit.transfer(this,orbit)
@@ -1080,7 +1167,8 @@ class Orbit{
 		system: "Sun",
 		apoapsis: 152100000e3,
 		periapsis: 147095000e3,
-		eccentricity: 0.0167086
+		eccentricity: 0.0167086,
+		period: 31558149.7635
 	},
 	geology: {
 		liquidCore: true,
@@ -1325,6 +1413,7 @@ class Orbit{
 				"pressure": 0.0000266*101325
 			}
 		],
+		height: 220000,
 		composition: [
 			["CO2",0.965],
 			["N2",0.035],
@@ -1358,6 +1447,7 @@ class Orbit{
 	density: 3.9335e3,
 	area: 144798500e6,
 	gravity: 3.72076,
+	lowOrbitAltitude: 200e3,
 	axialTilt: 25.19*(Math.PI/180),
 	period: 1.025957*86400,
 	satellites: ["Phobos","Deimos"],
@@ -1366,6 +1456,7 @@ class Orbit{
 	},
 	color: "#993d00",
 	atmosphere: {
+		height: 100000,
 		layers: [
 			{
 				"name": "troposphere",
@@ -1411,7 +1502,12 @@ class Orbit{
 	name: "Deimos",
 	type: "moon",
 	orbit: {
-		system: "Mars"
+		system: "Mars",
+		periapsis: 23455.5e3,
+		apoapsis: 23470.9e3,
+		semiMajor: 23463.2e3,
+		eccentricity: 0.00033,
+		period: 109123.2
 	}
 },
 {
@@ -1623,6 +1719,10 @@ class Orbit{
 	mass: 1.3452e23,
 	tidalLock: true,
 	geology: {},
+	atmosphere: {
+		layers: [],
+		height: 1200000
+	},
 	orbit: {
 		system: "Saturn",
 		semiMajor: 1221870e3,
@@ -1676,6 +1776,32 @@ class Orbit{
 		system: "Saturn",
 		semiMajor: 377396e3,
 		eccentricity: 0.0022
+	}
+},
+{
+	name: "Rhea",
+	type: "moon",
+	mass: 2.305518e21,
+	radius: 763.8e3,
+	tidalLock: true,
+	geology: {},
+	orbit: {
+		system: "Saturn",
+		semiMajor: 527108e3,
+		eccentricity: 0.0012583
+	}
+},
+{
+	name: "Iapetus",
+	type: "moon",
+	mass: 1.805635e21,
+	radius: 734.5e3,
+	tidalLock: true,
+	geology: {},
+	orbit: {
+		system: "Saturn",
+		semiMajor: 3560820e3,
+		eccentricity: 0.0276812
 	}
 },
 {
@@ -1779,6 +1905,18 @@ class Orbit{
 	systems.set(thing.name,system);
 });
 
+let earth = systems.get("Earth");
+let moon = systems.get("Moon");
+let sun = systems.get("Sun");
+let venus = systems.get("Venus");
+let mercury = systems.get("Mercury");
+let mars = systems.get("Mars");
+let ceres = systems.get("Ceres");
+let jupiter = systems.get("Jupiter");
+let saturn = systems.get("Saturn");
+let uranus = systems.get("Uranus");
+let neptune = systems.get("Neptune");
+
 class Orbiter{
 	constructor(properties){
 		this.x = properties.x || 0;
@@ -1846,6 +1984,22 @@ let yuriMoon = function(system,distance){
 	let mu2 = system.GM;
 	let mu1 = system.orbit.system.GM;
 	return integral(angular,semiMajor,mu1,mu2,distance) - integral(angular,semiMajor,mu1,mu2,surface)
+}
+
+let asteroid_return = function(start_rad,peri){
+	let marsPass = new Orbit({system: sun,apoapsis: start_rad, periapsis: peri}).inner(mars.orbit.a).velocity;
+	let vinfinity = Math.hypot(marsPass.tangential - mars.orbit.vela, marsPass.radial);
+	let turning = mars.turningAngle(mars.radius + 150000, vinfinity);
+	let entryAngle = Math.acos(marsPass.radial/vinfinity);
+	let exitAngle = entryAngle - turning;
+	let v_t = Math.sin(exitAngle) * vinfinity + mars.orbit.vela;
+	let v_r = - Math.cos(exitAngle) * vinfinity;
+	let ret = Orbit.vectorsToOrbit(sun,[mars.orbit.a,0,0],[v_r,v_t,0]);
+
+	console.log("burn1: ",- new Orbit({system: sun,apoapsis: start_rad, periapsis: peri}).velA + new Orbit({system: sun,apoapsis: start_rad, periapsis: start_rad}).velA);
+	console.log("burn2: ",- new Orbit({system: sun,apoapsis: start_rad, periapsis: earth.orbit.a}).velA + new Orbit({system: sun,apoapsis: start_rad, periapsis: start_rad}).velA	);
+
+	return ret;
 }
 /*
 

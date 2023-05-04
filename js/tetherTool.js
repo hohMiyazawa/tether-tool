@@ -198,8 +198,8 @@ let output = create("div","#output",false,mainContainer);
 		var illustration = document.createElementNS(svgNS,"svg");
 		tetherSketchContainer.appendChild(illustration);
 		illustration.id = "svg_ilu";
-		illustration.width = 900;
-		illustration.height = 250;
+		illustration.style.width = "900px";
+		illustration.style.height = "250px";
 
 	create("br",false,false,output);
 	let generalContainer = create("div","container",false,output);

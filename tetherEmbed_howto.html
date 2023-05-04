@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en-US">
+	<head>
+		<title>Tethers</title>
+		<meta charset="utf-8">
+		<script src="js/orbit.js"></script>
+		<script src="js/tetherTool.js"></script>
+		<style>
+body{
+	background-color:#202030;
+}
+.wrapper{
+	margin-left: 5%;
+	margin-right: 5%;
+	padding: 20px;
+	background: white;
+}
+pre{
+	margin-left: 20px;
+	font-family: monospace;
+}
+		</style>
+	</head>
+	<body>
+
+		<div class="wrapper">
+			<h1>How to embed</h1>
+			<p>In &lt;head&gt;, you need to include the scripts "orbit.js" and "tetherTool.js":</p>
+			<pre>
+&lt;script src="js/orbit.js"&gt;&lt;/script&gt;
+&lt;script src="js/tetherTool.js"&gt;&lt;/script&gt;
+			</pre>
+			<p>In the markup, you need a DOMnode where you want the tether tool inserted:</p>
+			<pre>
+&lt;div id="insertItHere"&gt;&lt;/div&gt;
+			</pre>
+			<p>Then, you can call the function "tetherTool" to initialise the tool:</p>
+			<pre>
+&lt;script&gt;
+    tetherTool(document.getElementById("insertItHere"))
+&lt;/script&gt;
+			</pre>
+			<p>The result:</p>
+			<div id="insertItHere"></div>
+		</div>
+		<script>
+tetherTool(document.getElementById("insertItHere"))
+		</script>
+	</body>
+</html>
