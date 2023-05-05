@@ -184,6 +184,14 @@ let tether = {
 				safetyInput.name = "safety";
 				safetyInput.value = 1;
 			create("span","label","Safety factor",materialOverride);
+			overrideInput.oninput = function(){
+				if(this.checked){
+					materialOverride.style.display = "block"
+				}
+				else{
+					materialOverride.style.display = "none"
+				}
+			}
 		
 	let warnings = create("p","#warnings",false,formElement,"color: red");
 

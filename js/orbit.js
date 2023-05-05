@@ -1654,7 +1654,9 @@ vp^2 = mu * (2/P - 1/a)
 	type: "dwarf planet",
 	GM: 1.108e12,
 	orbit: {
-		system: "Sun"
+		system: "Sun",
+		apoapsis: 14.579e12,
+		periapsis: 5.725e12
 	}
 },
 {
